@@ -6,6 +6,7 @@
 #define STATUS_101	"101 Switching protocols"
 #define STATUS_102	"102 Processing"
 #define STATUS_103	"103 Early hints"
+
 //Success response codes
 #define STATUS_200	"200 Ok"
 #define STATUS_201	"201 Created"
@@ -18,6 +19,7 @@
 #define STATUS_208	"208 Already reported"
 #define STATUS_218	"218 This is fine"
 #define STATUS_226	"229 IM used"
+
 //Redirection response codes
 #define STATUS_300	"300 Multiple choices"
 #define STATUS_301	"301 Moved permanently"
@@ -27,6 +29,7 @@
 #define STATUS_305	"305 Use proxy"
 #define STATUS_307	"307 Temporary redirect"
 #define STATUS_308	"308 Permanent redirect"
+
 //Client error response codes
 #define STATUS_400	"400 Bad request"
 #define STATUS_401	"401 Unauthorized"
@@ -58,6 +61,7 @@
 #define STATUS_429	"429 Too many requests"
 #define STATUS_431	"431 Request header fields too large"
 #define STATUS_451	"451 Unavailable for legal reasons"
+
 //Server error response codes
 #define STATUS_500	"500 Internal server error"
 #define STATUS_501	"501 Not implemented"

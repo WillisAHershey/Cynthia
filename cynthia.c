@@ -15,7 +15,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include "status.h"
-#include "../pthread_store/pthread_store.h"
+#include "pthread_store.h"
 
 //The following three defines represent the three arguments of the UNIX-specific socket() call
 #define DOMAIN		AF_INET
@@ -31,7 +31,7 @@
 //This is the size of the buffer we read into for the read() calls
 #define BUF_SIZE	(sysconf(_SC_PAGE_SIZE)-sizeof(threadData))
 
-#define HTTP_VERSION		"HTTP/2.0"
+#define HTTP_VERSION	"HTTP/2.0"
 
 static const char *requests[]={"GET","HEAD","POST","PUT","DELETE","TRACE","OPTIONS","CONNECT","PATCH"};
 
@@ -86,6 +86,7 @@ void* HTTPthreadServe(void *data){
 		case 0:
 			printf("GET\n");
 			break;
+			
 		case 1:
 			printf("HEAD\n");
 			break;
