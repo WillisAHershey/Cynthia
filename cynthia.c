@@ -66,6 +66,14 @@ void* HTTPthreadServe(void *data){
   pthread_store(data);
   threadData *d=data;
   while(1){
+	
+	//FOR THE RECORD
+	//The existence of the ssize_t type is a monument to humanity's insatiable need to undermine its own goals
+	//If we wanted sizes to be negative sometimes there would be no need for a size_t
+	//read() could have easily been implemented to return the third argument plus 1 on error and set errno appropriately
+	//But POSIX is instead making me use a type that doesn't deserve to exist
+	//End of rant
+	
 	ssize_t bytes=read(d->fd,d->buf,BUF_SIZE-1);
 	if(bytes==-1){
 		perror("Read()");
