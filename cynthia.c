@@ -1,13 +1,13 @@
 //Willis A. Hershey
-//Source code for Cynthia the Linux HTTP server
+//Cynthia the UNIX HTTP server
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
 #include <signal.h>
-#include <pthread.h>
-#include <sys/types.h>
+#include <pthread.h>	//Despite how much I love the C11 <threads.h> library, I will use <pthreads.h> because this program is
+#include <sys/types.h>	//entirely based on UNIX sockets, and cannot be portable to any other operating system family anyway.
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
@@ -33,12 +33,16 @@
 //This is the size of the buffer we read into for the read() calls
 #define BUF_SIZE	(sysconf(_SC_PAGE_SIZE)-sizeof(threadData))
 
+//This is sent to incoming connections so they can properly follow protocol
 #define HTTP_VERSION	"HTTP/2.0"
 
+//These are all the commands available in HTTP/2.0
 static const char *requests[]={"GET","HEAD","POST","PUT","DELETE","TRACE","OPTIONS","CONNECT","PATCH"};
 
+//Threads get this cast to void* as their pointer parameter in
 typedef struct{
   int fd;
+  struct sockaddr client;
   char buf[];
 }threadData;
 
@@ -70,8 +74,9 @@ void* HTTPthreadServe(void *data){
 	//FOR THE RECORD
 	//The existence of the ssize_t type is a monument to humanity's insatiable need to undermine its own goals
 	//If we wanted sizes to be negative sometimes there would be no need for a size_t
+	//The entire purpose of the size_t type was to standardize the return type of sizeof() and strlen() and parameter types of similar functions and macros
 	//read() could have easily been implemented to return the third argument plus 1 on error and set errno appropriately
-	//But POSIX is instead making me use a type that doesn't deserve to exist
+	//But POSIX is instead forcing me to use a type that doesn't deserve to exist
 	//End of rant
 	
 	ssize_t bytes=read(d->fd,d->buf,BUF_SIZE-1);
@@ -155,14 +160,8 @@ int serve(int port,void* (threadFunc)(void*)){
   }
   printf("Socket created with file descriptor %d\n",socketfd);
 
-  struct sockaddr_in server,client;
-  socklen_t length=(socklen_t)sizeof server;
-  server.sin_family=DOMAIN;
-  server.sin_addr.s_addr=INADDR_ANY;
-  server.sin_port=htons(port);
-
   //Then bind it to some given port
-  int retval=bind(socketfd,(struct sockaddr*)&server,sizeof server);
+  int retval=bind(socketfd,(struct sockaddr*)&(struct sockaddr_in){.sin_family = DOMAIN,.sin_addr.s_addr=INADDR_ANY,.sin_port=htons(port)},sizeof(struct sockaddr_in));
   if(retval==-1){
 	perror("bind()");
 	close(socketfd);
@@ -177,12 +176,12 @@ int serve(int port,void* (threadFunc)(void*)){
 	close(socketfd);
 	return EXIT_FAILURE;
   }
-
   //Pthreads are spawned in a detached state so the parent thread does not have to join them; they enter and exit existence on their own
   pthread_attr_t attr; //resource 2
   retval=pthread_attr_init(&attr);
   if(retval){
 	perror("pthread_attr_init()");
+	close(socketfd);
 	return EXIT_FAILURE;
   }
   retval=pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
@@ -195,27 +194,27 @@ int serve(int port,void* (threadFunc)(void*)){
 
   volatile int cont=1;
   while(cont){
-  	//Allocate a memory page to be used as buffer
+  	//Allocate a memory page to be used as buffer by the thread to be spwaned (The pthread is soley responsible to munmap this page when it terminates)
 	threadData *send=mmap(NULL,sysconf(_SC_PAGE_SIZE),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1,0); //pthread resource 1
 	if(!send){
-		perror("mmap()");
+		perror("mmap()");	//If this happens it's likely an OOM error that will resolve as pthreads unmap pages and terminate normally so we'll keep trying if mmap fails
 		continue;
 	}
-	
-	//Accept an incoming connection
-	int clientfd=accept(socketfd,(struct sockaddr*)&client,&length); //pthread resource 2
-	while(clientfd==-1){
-		perror("accept()");
-		clientfd=accept(socketfd,(struct sockaddr*)&client,&length);
-	}
-	send->fd=clientfd;
+	//Accept and incoming connection on the socket
+	int clientfd;
+	do{ 
+		//If we ever start to care about the ip address of the incoming connection this should be made not a compount literal
+		clientfd=accept(socketfd,&send->client,(socklen_t*)&(size_t){sizeof(struct sockaddr_in)}); //pthread resource 2
+		if(clientfd == -1)
+			perror("accept()");
+	}while(clientfd == -1);
+	send->fd = clientfd;
 	//And spawn a thread to manage that connection until it disconnects
-	pthread_t pid;
-	retval=pthread_create(&pid,&attr,threadFunc,(void*)send);
-	while(retval){
-		perror("pthread_create()");
-		retval=pthread_create(&pid,&attr,threadFunc,(void*)send);
-	}
+	do{
+		retval=pthread_create(&(pthread_t){0},&attr,threadFunc,send); //I don't actually care about the pthread id, so it's just an unnamed compound literal
+		if(retval)
+			perror("pthread_create()");
+	}while(retval);
   }
   pthread_attr_destroy(&attr);
   close(socketfd);
