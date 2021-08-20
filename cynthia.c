@@ -202,8 +202,7 @@ int serve(int port,void* (threadFunc)(void*)){
 	}
 	//Accept and incoming connection on the socket
 	int clientfd;
-	do{ 
-		//If we ever start to care about the ip address of the incoming connection this should be made not a compount literal
+	do{
 		clientfd=accept(socketfd,&send->client,(socklen_t*)&(size_t){sizeof(struct sockaddr_in)}); //pthread resource 2
 		if(clientfd == -1)
 			perror("accept()");
