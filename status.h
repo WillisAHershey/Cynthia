@@ -51,7 +51,7 @@
 #define STATUS_417	"417 Expectation failed"
 #define STATUS_418	"418 I'm a teapot"
 #define STATUS_420	"420 Enhance your calm"
-#define STATUS_421	"421 Misdirected rquest"
+#define STATUS_421	"421 Misdirected request"
 #define STATUS_422	"422 Unprocessable entity"
 #define STATUS_423	"423 Locked"
 #define STATUS_424	"424 Failed dependency"
